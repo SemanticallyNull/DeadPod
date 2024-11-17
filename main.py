@@ -7,6 +7,7 @@ from fastapi import FastAPI,Request,Response
 from fastapi.responses import StreamingResponse,RedirectResponse
 from pydub import AudioSegment,silence
 from pydub.utils import mediainfo
+import requests as prequests
 import truststore
 
 truststore.inject_into_ssl()
@@ -34,6 +35,10 @@ def remove_ads(url: str):
         buffer = io.BytesIO()
         composed.export(buffer, format="mp3",tags=mediainfo(podcast_file.name))
         return buffer
+
+@app.head("/rss/{url:path}")
+async def rss_head(url: str):
+    return {}
 
 @app.get("/rss/{url:path}")
 async def rss(url: str, request: Request):

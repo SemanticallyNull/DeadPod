@@ -42,7 +42,7 @@ def remove_ads(url: str):
 async def rss_head(url: str, response: Response):
     upstream_resp = urllib.request.urlopen(f"https://{url}")
     for header in upstream_resp.headers:
-        if header not in ["Content-Length", "Content-Type"]:
+        if header not in ["Content-Length", "Content-Type", "ETag"]:
             response.headers[header] = upstream_resp.headers[header]
 
 @app.get("/rss/{url:path}")
@@ -69,7 +69,7 @@ async def rss(url: str, request: Request):
 async def deadpodcast_head(url: str, response: Response):
     upstream_resp = urllib.request.urlopen(f"https://{url}")
     for header in upstream_resp.headers:
-        if header not in ["Content-Length", "Content-Type"]:
+        if header not in ["Content-Length", "Content-Type", "ETag"]:
             response.headers[header] = upstream_resp.headers[header]
 
 @app.get("/deadpodcast/{url:path}")

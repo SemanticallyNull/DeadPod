@@ -1,0 +1,7 @@
+name: deadpod
+
+services:
+  deadpod:
+    build: ./
+    ports:
+      - "8000:80"

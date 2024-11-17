@@ -57,11 +57,11 @@ async def rss(url: str, request: Request):
             title = elem.firstChild.data
             elem.firstChild.data = f"[DEAD] {title}"
         for elem in dom.getElementsByTagName("enclosure"):
-            enclosure_url = elem.attributes["url"].value
+            enclosure_url = elem.attributes["url"].value.replace("https://", "")
             elem.attributes["url"].value = f"{request.base_url}deadpodcast/{enclosure_url}"
         for elem in dom.getElementsByTagName("media:content"):
             if elem.attributes["type"].value == "audio/mpeg":
-                media_url = elem.attributes["url"].value
+                media_url = elem.attributes["url"].value.replace("https://", "")
                 elem.attributes["url"].value = f"{request.base_url}deadpodcast/{media_url}"
         return Response(content=dom.toxml(), media_type="text/xml")
 

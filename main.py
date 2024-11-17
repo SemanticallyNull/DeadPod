@@ -7,7 +7,6 @@ from fastapi import FastAPI,Request,Response
 from fastapi.responses import StreamingResponse,RedirectResponse
 from pydub import AudioSegment,silence
 from pydub.utils import mediainfo
-import requests as prequests
 import truststore
 
 truststore.inject_into_ssl()

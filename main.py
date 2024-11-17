@@ -59,6 +59,10 @@ async def rss(url: str, request: Request):
                 elem.attributes["url"].value = f"{request.base_url}deadpodcast/{url}"
         return Response(content=dom.toxml(), media_type="text/xml")
 
+@app.head("/deadpodcast/{url:path}")
+async def deadpodcast_head(url: str):
+    return {}
+
 @app.get("/deadpodcast/{url:path}")
 async def dead_podcast(url: str):
     return StreamingResponse(remove_ads(url), media_type="audio/mpeg")

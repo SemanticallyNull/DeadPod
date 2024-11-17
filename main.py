@@ -1,6 +1,10 @@
-import urllib.request
-import tempfile
 import io
+import logging
+import sys
+import tempfile
+from urllib.error import URLError,HTTPError
+import urllib.request
+import urllib.error
 
 from defusedxml.minidom import parse
 from fastapi import FastAPI,Request,Response
@@ -10,7 +14,17 @@ from pydub.utils import mediainfo
 import truststore
 
 truststore.inject_into_ssl()
-app = FastAPI(docs_url=None, redoc_url=None)
+app = FastAPI(name='DeadPod', docs_url=None, redoc_url=None)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+stream_handler = logging.StreamHandler(sys.stdout)
+log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+stream_handler.setFormatter(log_formatter)
+logger.addHandler(stream_handler)
+
+logger.info('API is starting up')
 
 def remove_ads(url: str):
     with tempfile.NamedTemporaryFile() as podcast_file:
@@ -40,7 +54,24 @@ def remove_ads(url: str):
     status_code=204,
 )
 async def rss_head(url: str, response: Response):
-    upstream_resp = urllib.request.urlopen(f"https://{url}")
+    return replicate_headers(f"https://{url}", response)
+
+def replicate_headers(url: str, response: Response):
+    try:
+        upstream_resp = urllib.request.urlopen(url)
+    except HTTPError as e:
+        logger.info(f"replicate_headers: error retrieving headers from {url}: {e}")
+        if 400 <= e.code < 500:
+            return Response(status_code=e.code)
+        else:
+            return Response(status_code=502)
+    except URLError as e:
+        logger.info(f"replicate_headers: error parsing url \"{url}\": {e}")
+        return Response(status_code=400)
+    except Exception as e:
+        logger.info(f"replicate_headers: unexpected error: {e}")
+        return Response(status_code=500)
+
     for header in upstream_resp.headers:
         if header not in ["Content-Length", "Content-Type", "ETag"]:
             response.headers[header] = upstream_resp.headers[header]
@@ -65,12 +96,12 @@ async def rss(url: str, request: Request):
                 elem.attributes["url"].value = f"{request.base_url}deadpodcast/{media_url}"
         return Response(content=dom.toxml(), media_type="text/xml")
 
-@app.head("/deadpodcast/{url:path}")
+@app.head(
+    "/deadpodcast/{url:path}",
+    status_code=204,
+)
 async def deadpodcast_head(url: str, response: Response):
-    upstream_resp = urllib.request.urlopen(f"https://{url}")
-    for header in upstream_resp.headers:
-        if header not in ["Content-Length", "Content-Type", "ETag"]:
-            response.headers[header] = upstream_resp.headers[header]
+    return replicate_headers(f"https://{url}", response)
 
 @app.get("/deadpodcast/{url:path}")
 async def dead_podcast(url: str):

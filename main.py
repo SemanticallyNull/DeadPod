@@ -4,7 +4,7 @@ import io
 
 from defusedxml.minidom import parse
 from fastapi import FastAPI,Request,Response
-from fastapi.responses import StreamingResponse,RedirectResponse
+from fastapi.responses import StreamingResponse
 from pydub import AudioSegment,silence
 from pydub.utils import mediainfo
 import truststore
@@ -35,9 +35,16 @@ def remove_ads(url: str):
         composed.export(buffer, format="mp3",tags=mediainfo(podcast_file.name))
         return buffer
 
-@app.head("/rss/{url:path}")
-async def rss_head(url: str):
-    return {}
+@app.head(
+    "/rss/{url:path}",
+    status_code=204,
+
+)
+async def rss_head(url: str, response: Response):
+    upstream_resp = urllib.request.urlopen(url)
+    for header in upstream_resp.headers:
+        if header not in ["Content-Length", "Content-Type"]:
+            response.headers[header] = upstream_resp.headers[header]
 
 @app.get("/rss/{url:path}")
 async def rss(url: str, request: Request):
@@ -60,8 +67,11 @@ async def rss(url: str, request: Request):
         return Response(content=dom.toxml(), media_type="text/xml")
 
 @app.head("/deadpodcast/{url:path}")
-async def deadpodcast_head(url: str):
-    return {}
+async def deadpodcast_head(url: str, response: Response):
+    upstream_resp = urllib.request.urlopen(url)
+    for header in upstream_resp.headers:
+        if header not in ["Content-Length", "Content-Type"]:
+            response.headers[header] = upstream_resp.headers[header]
 
 @app.get("/deadpodcast/{url:path}")
 async def dead_podcast(url: str):

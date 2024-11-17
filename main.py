@@ -17,14 +17,12 @@ truststore.inject_into_ssl()
 app = FastAPI(name='DeadPod', docs_url=None, redoc_url=None)
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 stream_handler = logging.StreamHandler(sys.stdout)
 log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
-
-logger.info('API is starting up')
 
 def remove_ads(url: str):
     with tempfile.NamedTemporaryFile() as podcast_file:
@@ -79,7 +77,21 @@ def replicate_headers(url: str, response: Response):
 @app.get("/rss/{url:path}")
 async def rss(url: str, request: Request):
     with tempfile.NamedTemporaryFile() as feed_file:
-        urllib.request.urlretrieve(f"https://{url}", feed_file.name)
+        try:
+            urllib.request.urlretrieve(f"https://{url}", feed_file.name)
+        except HTTPError as e:
+            logger.info(f"rss: error retrieving headers from {url}: {e}")
+            if 400 <= e.code < 500:
+                return Response(status_code=e.code)
+            else:
+                return Response(status_code=502)
+        except URLError as e:
+            logger.info(f"rss: error parsing url \"{url}\": {e}")
+            return Response(status_code=400)
+        except Exception as e:
+            logger.info(f"rss: unexpected error: {e}")
+            return Response(status_code=500)
+
         dom = parse(feed_file.name)
         for elem in dom.getElementsByTagName("title"):
             title = elem.firstChild.data
@@ -105,4 +117,19 @@ async def deadpodcast_head(url: str, response: Response):
 
 @app.get("/deadpodcast/{url:path}")
 async def dead_podcast(url: str):
-    return StreamingResponse(remove_ads(f"https://{url}"), media_type="audio/mpeg")
+    try:
+        dead = remove_ads(f"https://{url}")
+    except HTTPError as e:
+        logger.info(f"rss: error retrieving headers from {url}: {e}")
+        if 400 <= e.code < 500:
+            return Response(status_code=e.code)
+        else:
+            return Response(status_code=502)
+    except URLError as e:
+        logger.info(f"rss: error parsing url \"{url}\": {e}")
+        return Response(status_code=400)
+    except Exception as e:
+        logger.info(f"rss: unexpected error: {e}")
+        return Response(status_code=500)
+
+    return StreamingResponse(dead, media_type="audio/mpeg")

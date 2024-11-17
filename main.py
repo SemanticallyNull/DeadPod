@@ -38,10 +38,9 @@ def remove_ads(url: str):
 @app.head(
     "/rss/{url:path}",
     status_code=204,
-
 )
 async def rss_head(url: str, response: Response):
-    upstream_resp = urllib.request.urlopen(url)
+    upstream_resp = urllib.request.urlopen(f"https://{url}")
     for header in upstream_resp.headers:
         if header not in ["Content-Length", "Content-Type"]:
             response.headers[header] = upstream_resp.headers[header]
@@ -49,7 +48,7 @@ async def rss_head(url: str, response: Response):
 @app.get("/rss/{url:path}")
 async def rss(url: str, request: Request):
     with tempfile.NamedTemporaryFile() as feed_file:
-        urllib.request.urlretrieve(url, feed_file.name)
+        urllib.request.urlretrieve(f"https://{url}", feed_file.name)
         dom = parse(feed_file.name)
         for elem in dom.getElementsByTagName("title"):
             title = elem.firstChild.data
@@ -58,21 +57,21 @@ async def rss(url: str, request: Request):
             title = elem.firstChild.data
             elem.firstChild.data = f"[DEAD] {title}"
         for elem in dom.getElementsByTagName("enclosure"):
-            url = elem.attributes["url"].value
-            elem.attributes["url"].value = f"{request.base_url}deadpodcast/{url}"
+            enclosure_url = elem.attributes["url"].value
+            elem.attributes["url"].value = f"{request.base_url}deadpodcast/{enclosure_url}"
         for elem in dom.getElementsByTagName("media:content"):
             if elem.attributes["type"].value == "audio/mpeg":
-                url = elem.attributes["url"].value
-                elem.attributes["url"].value = f"{request.base_url}deadpodcast/{url}"
+                media_url = elem.attributes["url"].value
+                elem.attributes["url"].value = f"{request.base_url}deadpodcast/{media_url}"
         return Response(content=dom.toxml(), media_type="text/xml")
 
 @app.head("/deadpodcast/{url:path}")
 async def deadpodcast_head(url: str, response: Response):
-    upstream_resp = urllib.request.urlopen(url)
+    upstream_resp = urllib.request.urlopen(f"https://{url}")
     for header in upstream_resp.headers:
         if header not in ["Content-Length", "Content-Type"]:
             response.headers[header] = upstream_resp.headers[header]
 
 @app.get("/deadpodcast/{url:path}")
 async def dead_podcast(url: str):
-    return StreamingResponse(remove_ads(url), media_type="audio/mpeg")
+    return StreamingResponse(remove_ads(f"https://{url}"), media_type="audio/mpeg")

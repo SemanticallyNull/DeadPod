@@ -2,7 +2,7 @@
 
 A naive way to get ads out of your podcast stream.
 
-To add a podcast you can just `https://[yourdomain]/rss/[url]`
+To add a podcast you can just `https://[yourdomain]/rss/[url without the "https://"]`
 and you'll get a feed containing ads stripped.
 
 When downloading the podcast there will be a delay of ~30 seconds
